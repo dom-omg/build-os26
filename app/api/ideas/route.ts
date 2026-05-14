@@ -38,20 +38,33 @@ function loadInbox(): { id: string; content: string }[] {
 }
 
 async function signSpec(spec: IdeaSpec): Promise<SignedCert> {
-  const { privateKey, publicKey } = generateKeyPairSync('ed25519')
   const specJson = JSON.stringify(spec)
   const hash = createHash('sha256').update(specJson).digest('hex')
-  // dynamic import forces Node.js native crypto — avoids Turbopack polyfill
-  const { sign: nodeSign } = await import('crypto')
+
+  // Ed25519 — Node.js native
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519')
+  const { sign: nodeSign, randomBytes } = await import('crypto')
   const sigBuf = nodeSign(null, Buffer.from(specJson), privateKey)
   const pubKeyDer = publicKey.export({ type: 'spki', format: 'der' })
-  const pubKeyHex = Buffer.from(pubKeyDer).toString('hex').slice(-64)
+  const ed25519PubKeyHex = Buffer.from(pubKeyDer).toString('hex').slice(-64)
+
+  // ML-DSA-65 — NIST FIPS 204 post-quantum (noble/post-quantum)
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — package exports map missing for subpath; resolves correctly at runtime
+  const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa')
+  const seed = randomBytes(32)
+  const { secretKey: mlSk, publicKey: mlPk } = ml_dsa65.keygen(seed)
+  const msgBytes = new TextEncoder().encode(specJson)
+  const mlSig = ml_dsa65.sign(msgBytes, mlSk)
+
   return {
     ideaId: spec.id,
     specHash: hash,
     signature: sigBuf.toString('hex').slice(0, 128),
-    publicKey: pubKeyHex,
-    algorithm: 'Ed25519',
+    publicKey: ed25519PubKeyHex,
+    algorithm: 'Ed25519 + ML-DSA-65',
+    mlDsaPublicKey: Buffer.from(mlPk).toString('hex'),
+    mlDsaSignature: Buffer.from(mlSig).toString('hex'),
     timestamp: new Date().toISOString(),
   }
 }
@@ -245,7 +258,7 @@ Output JSON only: {"similarity": 0-100, "matchId": "IDEE_XXX or null", "verdict"
         send({
           type: 'step_done',
           step: 'sign_cert',
-          result: `Ed25519 signed · hash: ${cert.specHash.slice(0, 16)}...`,
+          result: `Ed25519 + ML-DSA-65 dual-signed · hash: ${cert.specHash.slice(0, 16)}...`,
         })
 
         send({ type: 'pipeline_done', elapsed: Date.now() - startedAt, ideaId: idea.id })

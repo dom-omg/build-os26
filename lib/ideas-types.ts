@@ -32,6 +32,8 @@ export interface SignedCert {
   specHash: string
   signature: string
   publicKey: string
-  algorithm: 'Ed25519'
+  algorithm: 'Ed25519 + ML-DSA-65'
+  mlDsaPublicKey: string
+  mlDsaSignature: string
   timestamp: string
 }

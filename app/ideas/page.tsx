@@ -355,27 +355,35 @@ export default function IdeasPage() {
                 <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">Decision Certificate</div>
                 <div className="grid grid-cols-1 gap-1 text-xs font-mono">
                   <div className="flex gap-2">
-                    <span className="text-zinc-600 w-16 shrink-0">algorithm</span>
-                    <span className="text-green-400">{state.cert.algorithm}</span>
+                    <span className="text-zinc-600 w-20 shrink-0">algorithm</span>
+                    <span className="text-green-400 font-bold">{state.cert.algorithm}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-zinc-600 w-16 shrink-0">idea</span>
+                    <span className="text-zinc-600 w-20 shrink-0">idea</span>
                     <span className="text-zinc-300">{state.cert.ideaId}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-zinc-600 w-16 shrink-0">hash</span>
+                    <span className="text-zinc-600 w-20 shrink-0">sha256</span>
                     <span className="text-zinc-400 break-all">{state.cert.specHash.slice(0, 32)}...</span>
                   </div>
-                  <div className="flex gap-2">
-                    <span className="text-zinc-600 w-16 shrink-0">sig</span>
-                    <span className="text-zinc-400 break-all">{state.cert.signature.slice(0, 32)}...</span>
+                  <div className="flex gap-2 border-t border-zinc-800/60 pt-1 mt-1">
+                    <span className="text-zinc-600 w-20 shrink-0">ed25519 sig</span>
+                    <span className="text-blue-400 break-all">{state.cert.signature.slice(0, 32)}...</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-zinc-600 w-16 shrink-0">pubkey</span>
+                    <span className="text-zinc-600 w-20 shrink-0">ed25519 pk</span>
                     <span className="text-zinc-400 break-all">{state.cert.publicKey.slice(0, 32)}...</span>
                   </div>
+                  <div className="flex gap-2 border-t border-zinc-800/60 pt-1 mt-1">
+                    <span className="text-zinc-600 w-20 shrink-0">ml-dsa sig</span>
+                    <span className="text-purple-400 break-all">{state.cert.mlDsaSignature.slice(0, 32)}...</span>
+                  </div>
                   <div className="flex gap-2">
-                    <span className="text-zinc-600 w-16 shrink-0">signed</span>
+                    <span className="text-zinc-600 w-20 shrink-0">ml-dsa pk</span>
+                    <span className="text-zinc-400 break-all">{state.cert.mlDsaPublicKey.slice(0, 32)}...</span>
+                  </div>
+                  <div className="flex gap-2 border-t border-zinc-800/60 pt-1 mt-1">
+                    <span className="text-zinc-600 w-20 shrink-0">signed</span>
                     <span className="text-zinc-300">{state.cert.timestamp}</span>
                   </div>
                 </div>
