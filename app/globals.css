@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #050508;
+  color: #c8c8d4;
+  font-family: 'JetBrains Mono', monospace;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Panel */
+.panel {
+  background: #0b0b0f;
+  border: 1px solid #1a1a2e;
+  border-radius: 4px;
+  position: relative;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00ff8833, transparent);
+}
+
+/* Terminal scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0b0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a1a2e;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff8844;
+}
+
+/* Status dots */
+.dot-running {
+  background: #00ff88;
+  box-shadow: 0 0 6px #00ff88;
+  animation: pulse_dot 1s ease-in-out infinite;
+}
+.dot-thinking {
+  background: #ffaa00;
+  box-shadow: 0 0 6px #ffaa00;
+  animation: pulse_dot 0.7s ease-in-out infinite;
+}
+.dot-waiting {
+  background: #3a3a4a;
+}
+.dot-verifying {
+  background: #00aaff;
+  box-shadow: 0 0 6px #00aaff;
+  animation: pulse_dot 0.5s ease-in-out infinite;
+}
+.dot-done {
+  background: #00ff88;
+}
+.dot-error {
+  background: #ff3355;
+}
+
+@keyframes pulse_dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes slide_in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-blink { animation: blink 1s step-end infinite; }
+.animate-slide-in { animation: slide_in 0.25s ease-out; }
+
+/* Z3 proof colors */
+.z3-keyword { color: #00aaff; }
+.z3-comment { color: #3a3a5a; }
+.z3-proved  { color: #00ff88; font-weight: 700; }
+.z3-rejected { color: #ff3355; font-weight: 700; }
+.z3-var     { color: #ffaa00; }
