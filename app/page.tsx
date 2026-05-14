@@ -156,7 +156,7 @@ export default function HomePage() {
             <div className="w-3 h-3 rounded-full bg-os-amber/70" />
             <div className="w-3 h-3 rounded-full bg-os-green/70" />
           </div>
-          <span className="text-os-green font-bold text-sm tracking-widest">AGENT-OS</span>
+          <span className="text-os-green font-bold text-sm tracking-widest">QED</span>
           <span className="text-os-dim text-xs">KERNEL v0.1</span>
           <a href="/ideas" className="text-[10px] text-blue-400 hover:text-blue-300 border border-blue-500/40 hover:border-blue-400 px-2 py-0.5 rounded transition-colors ml-2">IDEA PIPELINE</a>
         </div>
@@ -358,7 +358,7 @@ export default function HomePage() {
 
       {/* ── FOOTER ───────────────────────────────────────────── */}
       <footer className="flex-shrink-0 flex items-center justify-between px-5 py-1.5 border-t border-os-border text-[9px] text-os-dim">
-        <span>AGENT-OS · Build OS26 · Mila 2026</span>
+        <span>QED · Build OS26 · Mila 2026</span>
         <span>
           {isRunning && (
             <span className="flex items-center gap-1.5">

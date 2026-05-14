@@ -126,7 +126,7 @@ function generateSMTFormula(scenario: string, facts: PolicyFact[], domain: Scena
     : `(and ${requiredVars.join('\n         ')})`
 
   return [
-    `; ─── AGENT-OS Z3 VERIFICATION ─────────────────────────────`,
+    `; ─── QED Z3 VERIFICATION ───────────────────────────────────`,
     `; Kernel: build-os26 v0.1`,
     `; ${domainComment}`,
     `; Scenario: ${scenario.slice(0, 70)}`,
