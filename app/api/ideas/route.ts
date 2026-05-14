@@ -47,12 +47,18 @@ async function signSpec(spec: IdeaSpec): Promise<SignedCert> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const { ideaId } = (await req.json()) as { ideaId: string }
+  const { ideaId, rawContent } = (await req.json()) as { ideaId: string; rawContent?: string }
 
   const inbox = loadInbox()
-  const idea = ideaId === '__random__'
-    ? inbox[Math.floor(Math.random() * inbox.length)]
-    : inbox.find((i) => i.id === ideaId)
+  let idea: { id: string; content: string } | undefined
+
+  if (ideaId === '__raw__' && rawContent?.trim()) {
+    idea = { id: 'IDEE_RAW', content: rawContent }
+  } else if (ideaId === '__random__') {
+    idea = inbox[Math.floor(Math.random() * inbox.length)]
+  } else {
+    idea = inbox.find((i) => i.id === ideaId)
+  }
 
   if (!idea) {
     return new Response('Idea not found', { status: 404 })

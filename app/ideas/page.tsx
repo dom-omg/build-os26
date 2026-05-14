@@ -88,6 +88,8 @@ export default function IdeasPage() {
   const run = useCallback(async () => {
     if (!selected && inbox.length === 0) return
     const ideaId = selected || '__random__'
+    const rawItem = inbox.find(i => i.id === '__raw__')
+    const rawContent = ideaId === '__raw__' ? rawItem?.preview : undefined
 
     abortRef.current?.abort()
     const ctrl = new AbortController()
@@ -100,7 +102,7 @@ export default function IdeasPage() {
       const res = await fetch('/api/ideas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ideaId }),
+        body: JSON.stringify({ ideaId, rawContent }),
         signal: ctrl.signal,
       })
 
@@ -146,11 +148,31 @@ export default function IdeasPage() {
           </p>
         </div>
 
+        {/* Raw idea input */}
+        <div className="mb-6">
+          <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Or paste a raw idea directly</div>
+          <textarea
+            value={selected === '__raw__' ? (inbox.find(i => i.id === '__raw__')?.preview ?? '') : ''}
+            onChange={(e) => {
+              const val = e.target.value
+              if (!val.trim()) { setSelected(''); return }
+              // inject as virtual inbox item
+              setInbox(prev => {
+                const filtered = prev.filter(i => i.id !== '__raw__')
+                return [{ id: '__raw__', preview: val, date: 'now' }, ...filtered]
+              })
+              setSelected('__raw__')
+            }}
+            placeholder="Tape ton idée brute ici... ou sélectionne une idée dans l'inbox ci-dessous"
+            className="w-full h-24 bg-zinc-900 border border-zinc-700 hover:border-zinc-500 focus:border-blue-500 rounded px-3 py-2 text-sm text-zinc-300 placeholder-zinc-600 outline-none resize-none transition-colors"
+          />
+        </div>
+
         {/* Inbox selector */}
         <div className="mb-6">
-          <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Select idea from inbox ({inbox.length} loaded)</div>
+          <div className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Inbox Max — {inbox.filter(i => i.id !== '__raw__').length} idées chargées</div>
           <div className="grid gap-2">
-            {inbox.map((item) => (
+            {inbox.filter(i => i.id !== '__raw__').map((item) => (
               <button
                 key={item.id}
                 onClick={() => setSelected(item.id)}
@@ -168,14 +190,28 @@ export default function IdeasPage() {
           </div>
         </div>
 
-        {/* Run button */}
-        <button
-          onClick={run}
-          disabled={state.phase === 'running' || inbox.length === 0}
-          className="w-full py-3 px-6 rounded border border-blue-500 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold tracking-wider uppercase text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-8"
-        >
-          {state.phase === 'running' ? `▶ PIPELINE RUNNING — ${elapsedDisplay}` : '▶ RUN PIPELINE'}
-        </button>
+        {/* Run / Reset buttons */}
+        <div className="flex gap-3 mb-8">
+          <button
+            onClick={run}
+            disabled={state.phase === 'running' || inbox.length === 0}
+            className="flex-1 py-3 px-6 rounded border border-blue-500 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold tracking-wider uppercase text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {state.phase === 'running'
+              ? `▶ PIPELINE RUNNING — ${elapsedDisplay}`
+              : state.phase === 'done'
+              ? '▶ RUN AGAIN'
+              : '▶ RUN PIPELINE'}
+          </button>
+          {(state.phase === 'done' || state.phase === 'error') && (
+            <button
+              onClick={() => { setState(INITIAL); setSelected('') }}
+              className="py-3 px-5 rounded border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white text-sm transition-colors"
+            >
+              ← Reset
+            </button>
+          )}
+        </div>
 
         {/* Pipeline steps */}
         {state.phase !== 'idle' && (
