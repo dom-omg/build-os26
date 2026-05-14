@@ -17,8 +17,9 @@ interface SystemState {
   agents: Agent[]
   z3Formula: string
   z3Trace: string
-  z3Result: 'proved' | 'rejected' | null
+  z3Result: 'proved' | 'rejected' | 'undecided' | null
   z3Reason: string
+  z3Counterexample: { variable: string; label: string; description: string } | null
   summary: string
   elapsed: number
   errorMsg: string
@@ -31,6 +32,7 @@ const INITIAL: SystemState = {
   z3Trace: '',
   z3Result: null,
   z3Reason: '',
+  z3Counterexample: null,
   summary: '',
   elapsed: 0,
   errorMsg: '',
@@ -111,7 +113,7 @@ export default function HomePage() {
               case 'z3_start':
                 return { ...prev, z3Formula: event.formula, agents: prev.agents.map((a) => a.name === 'Z3-Verifier' ? { ...a, status: 'verifying' } : a) }
               case 'z3_result':
-                return { ...prev, z3Trace: event.trace, z3Result: event.result, z3Reason: event.reason }
+                return { ...prev, z3Trace: event.trace, z3Result: event.result, z3Reason: event.reason, z3Counterexample: event.counterexample }
               case 'system_done':
                 return { ...prev, phase: 'done', summary: event.summary, elapsed: event.elapsed }
               case 'error':
@@ -348,6 +350,7 @@ export default function HomePage() {
               trace={state.z3Trace}
               result={state.z3Result}
               reason={state.z3Reason}
+              z3Counterexample={state.z3Counterexample}
             />
           </div>
         </div>

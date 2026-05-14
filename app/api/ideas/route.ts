@@ -12,6 +12,16 @@ function encode(event: PipelineEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`
 }
 
+function extractJSON<T>(text: string): T | null {
+  try {
+    const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+    const raw = codeBlock ? codeBlock[1] : text.match(/\{[\s\S]*\}/)?.[0]
+    return raw ? JSON.parse(raw) as T : null
+  } catch {
+    return null
+  }
+}
+
 function loadInbox(): { id: string; content: string }[] {
   const dir = join(process.cwd(), 'data', 'inbox')
   try {
@@ -106,7 +116,7 @@ ${idea.content}`,
         })
 
         const rawElaborate = elaborateMsg.content[0].type === 'text' ? elaborateMsg.content[0].text : ''
-        let elaborated: {
+        type ElaboratedSpec = {
           questions: string[]
           title: string
           category: string
@@ -115,15 +125,8 @@ ${idea.content}`,
           targetMarket: string
           estimatedEffort: string
           nextAction: string
-        } | null = null
-
-        try {
-          const codeBlock = rawElaborate.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-          const jsonStr = codeBlock ? codeBlock[1] : rawElaborate.match(/\{[\s\S]*\}/)?.[0]
-          elaborated = jsonStr ? JSON.parse(jsonStr) : null
-        } catch {
-          elaborated = null
         }
+        let elaborated: ElaboratedSpec | null = extractJSON<ElaboratedSpec>(rawElaborate)
 
         if (!elaborated) {
           elaborated = {
@@ -152,41 +155,38 @@ ${idea.content}`,
         // ── Tool 3: dedup_check ─────────────────────────────────
         send({ type: 'step_start', step: 'dedup_check', label: 'Checking Brain for similar ideas...' })
 
-        const otherIdeas = inbox
-          .filter((i) => i.id !== idea.id)
+        const otherIdeasList = inbox
+          .filter((i) => i.id !== idea!.id)
           .map((i) => {
             const m = i.content.match(/IDEE BRUTE:\s*\n(.+)/)
             return `${i.id}: ${m ? m[1].trim() : i.id}`
           })
-          .join('\n')
 
-        const dedupMsg = await client.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 200,
-          messages: [{
-            role: 'user',
-            content: `New idea: "${elaborated.title}" — ${elaborated.problemStatement}
+        const otherIdeas = otherIdeasList.join('\n')
 
-Existing ideas:
-${otherIdeas}
-
-Output JSON only: {"similarity": 0-100, "matchId": "IDEE_XXX or null", "verdict": "new|related|duplicate"}`,
-          }],
-        })
-
-        const dedupRaw = dedupMsg.content[0].type === 'text' ? dedupMsg.content[0].text : ''
         let dedup: { similarity: number; matchId: string | null; verdict: string } = {
           similarity: 0,
           matchId: null,
           verdict: 'new',
         }
 
-        try {
-          const codeBlock = dedupRaw.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-          const jsonStr = codeBlock ? codeBlock[1] : dedupRaw.match(/\{[\s\S]*\}/)?.[0]
-          dedup = jsonStr ? JSON.parse(jsonStr) : dedup
-        } catch {
-          // keep default
+        if (otherIdeasList.length > 0) {
+          const dedupMsg = await client.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            messages: [{
+              role: 'user',
+              content: `New idea: "${elaborated.title}" — ${elaborated.problemStatement}
+
+Existing ideas:
+${otherIdeas}
+
+Output JSON only: {"similarity": 0-100, "matchId": "IDEE_XXX or null", "verdict": "new|related|duplicate"}`,
+            }],
+          })
+
+          const dedupRaw = dedupMsg.content[0].type === 'text' ? dedupMsg.content[0].text : ''
+          dedup = extractJSON<typeof dedup>(dedupRaw) ?? dedup
         }
 
         const brainStatus: 'new' | 'duplicate' | 'related' =

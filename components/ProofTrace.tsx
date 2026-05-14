@@ -3,8 +3,9 @@
 interface Props {
   formula: string
   trace: string
-  result: 'proved' | 'rejected' | null
+  result: 'proved' | 'rejected' | 'undecided' | null
   reason: string
+  z3Counterexample?: { variable: string; label: string; description: string } | null
 }
 
 function highlight(line: string): React.ReactNode {
@@ -19,7 +20,7 @@ function highlight(line: string): React.ReactNode {
   return <span>{line}</span>
 }
 
-export default function ProofTrace({ formula, trace, result, reason }: Props) {
+export default function ProofTrace({ formula, trace, result, reason, z3Counterexample }: Props) {
   if (!formula && !result) {
     return (
       <div className="flex items-center justify-center h-full text-os-dim text-xs">
@@ -42,13 +43,21 @@ export default function ProofTrace({ formula, trace, result, reason }: Props) {
           className={`flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-os-border ${
             result === 'proved'
               ? 'bg-os-green/5 border-os-green/20'
+              : result === 'undecided'
+              ? 'bg-os-amber/5 border-os-amber/20'
               : 'bg-os-red/5 border-os-red/20'
           }`}
         >
-          <span className="text-2xl">{result === 'proved' ? '✅' : '❌'}</span>
+          <span className="text-2xl">
+            {result === 'proved' ? '✅' : result === 'undecided' ? '⚠️' : '❌'}
+          </span>
           <div>
-            <div className={`text-sm font-bold tracking-widest ${result === 'proved' ? 'text-os-green' : 'text-os-red'}`}>
-              {result === 'proved' ? 'PROVED — UNSAT' : 'REJECTED — SAT'}
+            <div className={`text-sm font-bold tracking-widest ${
+              result === 'proved' ? 'text-os-green' :
+              result === 'undecided' ? 'text-os-amber' :
+              'text-os-red'
+            }`}>
+              {result === 'proved' ? 'PROVED — UNSAT' : result === 'undecided' ? 'UNDECIDED' : 'REJECTED — SAT'}
             </div>
             <div className="text-[10px] text-os-dim mt-0.5">{reason}</div>
           </div>
@@ -64,6 +73,21 @@ export default function ProofTrace({ formula, trace, result, reason }: Props) {
             </div>
           ))}
         </pre>
+
+        {/* Counterexample details */}
+        {z3Counterexample && (
+          <div className="mt-3 border border-os-red/30 rounded bg-os-red/5 p-3">
+            <pre className="text-[10px] leading-[1.7] font-mono whitespace-pre-wrap text-orange-400">
+              {[
+                '; ─── COUNTEREXAMPLE DETAILS ──────────────────────────────',
+                `; Variable:  ${z3Counterexample.variable}`,
+                `; Label:     ${z3Counterexample.label}`,
+                `; Impact:    ${z3Counterexample.description}`,
+                '; ► This is the specific precondition that caused the rejection.',
+              ].join('\n')}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   )

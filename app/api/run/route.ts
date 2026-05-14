@@ -1,5 +1,6 @@
+// app/api/run/route.ts
 import Anthropic from '@anthropic-ai/sdk'
-import { buildZ3Proof } from '@/lib/z3'
+import { buildZ3Verification } from '@/lib/z3'
 import type { Agent, SSEEvent } from '@/lib/types'
 
 const client = new Anthropic()
@@ -15,7 +16,7 @@ async function callAgent(
 ): Promise<string> {
   const msg = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 300,
+    max_tokens: 400,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   })
@@ -56,11 +57,11 @@ export async function POST(req: Request): Promise<Response> {
 
         const planRaw = await callAgent(
           'Orchestrator',
-          'You are the kernel orchestrator of an agentic OS. Given a scenario, output a JSON object with: {"agents": [{"name": string, "role": string, "task": string}], "decision": string, "valid": boolean}. Use 2-3 agents. Names: Scout, Analyst, Solver, Monitor, Validator. Keep tasks under 70 chars. "decision" = the final recommended action (< 80 chars). "valid" = whether the action is logically safe (usually true unless scenario is clearly dangerous/impossible).',
+          'You are the kernel orchestrator of an agentic OS. Given a scenario, output a JSON object with: {"agents": [{"name": string, "role": string, "task": string}], "decision": string}. Use 2-3 agents. Names: Scout, Analyst, Solver, Monitor, Validator. Role must be one of: RECON, ANALYSIS, EXECUTION, MONITOR, AUDIT. Keep tasks under 70 chars. "decision" = the final recommended action (< 80 chars).',
           scenario
         )
 
-        let plan: { agents: { name: string; role: string; task: string }[]; decision: string; valid: boolean }
+        let plan: { agents: { name: string; role: string; task: string }[]; decision: string }
 
         try {
           const jsonMatch = planRaw.match(/\{[\s\S]*\}/)
@@ -77,7 +78,6 @@ export async function POST(req: Request): Promise<Response> {
               { name: 'Solver', role: 'EXECUTION', task: 'Propose and validate solution path' },
             ],
             decision: 'Execute recommended resolution path',
-            valid: true,
           }
         }
 
@@ -89,7 +89,7 @@ export async function POST(req: Request): Promise<Response> {
         })
 
         // ── Step 2: Run each sub-agent ──────────────────────────
-        const agentOutputs: { name: string; conclusion: string }[] = []
+        const agentOutputs: { name: string; role: string; conclusion: string }[] = []
 
         for (let i = 0; i < plan.agents.length; i++) {
           const agentDef = plan.agents[i]
@@ -111,14 +111,16 @@ export async function POST(req: Request): Promise<Response> {
 
           const output = await callAgent(
             agentDef.name,
-            `You are ${agentDef.name}, an AI agent with role ${agentDef.role}. Your task: ${agentDef.task}. Be concise, technical, factual. Output 2-3 sentences max. End with a one-line conclusion starting with "CONCLUSION:"`,
+            `You are ${agentDef.name}, an AI agent with role ${agentDef.role}. Your task: ${agentDef.task}. Be concise, technical, factual. Output 2-3 sentences max. End with exactly:
+CONCLUSION: <one sentence summary of your finding>
+STATUS: COMPLETE or INCOMPLETE`,
             scenario
           )
 
-          const conclusionMatch = output.match(/CONCLUSION:\s*(.+)/i)
-          const conclusion = conclusionMatch ? conclusionMatch[1].trim() : output.slice(-80)
+          const conclusionMatch = output.match(/CONCLUSION:\s*(.+?)(?:\n|STATUS:|$)/i)
+          const conclusion = conclusionMatch ? conclusionMatch[1].trim() : output.slice(-120).trim()
 
-          agentOutputs.push({ name: agentDef.name, conclusion })
+          agentOutputs.push({ name: agentDef.name, role: agentDef.role, conclusion })
 
           send({
             type: 'agent_done',
@@ -143,25 +145,28 @@ export async function POST(req: Request): Promise<Response> {
         }
         send({ type: 'agent_spawn', agent: verifierAgent })
 
-        const z3 = buildZ3Proof(scenario, agentOutputs, plan.decision, plan.valid)
+        const z3 = buildZ3Verification(scenario, agentOutputs)
 
-        send({ type: 'z3_start', formula: z3.formula })
+        send({ type: 'z3_start', formula: z3.smtFormula })
         await new Promise((r) => setTimeout(r, 1200))
 
         send({
           type: 'agent_done',
           id: verifierId,
-          output: plan.valid
+          output: z3.result === 'proved'
             ? `UNSAT — No counterexample. Decision formally proved.`
-            : `SAT — Counterexample found. Decision rejected by kernel.`,
+            : `SAT — Counterexample found: ${z3.counterexample?.label ?? 'precondition failed'}. Decision rejected.`,
           doneAt: Date.now(),
         })
 
         send({
           type: 'z3_result',
           result: z3.result,
-          trace: z3.trace,
+          trace: z3.smtTrace,
           reason: z3.reason,
+          counterexample: z3.counterexample
+            ? { variable: z3.counterexample.variable, label: z3.counterexample.label, description: z3.counterexample.description }
+            : null,
         })
 
         const elapsed = Date.now() - startedAt
