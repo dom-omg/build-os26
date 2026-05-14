@@ -50,8 +50,7 @@ async function signSpec(spec: IdeaSpec): Promise<SignedCert> {
 
   // ML-DSA-65 — NIST FIPS 204 post-quantum (noble/post-quantum)
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore — package exports map missing for subpath; resolves correctly at runtime
-  const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa')
+  const { ml_dsa65 } = await import('@noble/post-quantum/ml-dsa.js')
   const seed = randomBytes(32)
   const { secretKey: mlSk, publicKey: mlPk } = ml_dsa65.keygen(seed)
   const msgBytes = new TextEncoder().encode(specJson)
